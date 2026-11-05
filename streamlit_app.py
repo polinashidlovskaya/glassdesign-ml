@@ -233,6 +233,9 @@ if folder:
         if issues:
             with st.expander('Ограничения дополнительной проверки'):
                 for issue in issues: st.write(str(issue))
+        st.caption('Расстояние до экспериментального состава — половина суммы абсолютных '
+                   'различий концентраций оксидов (мол.%). Это не ошибка прогноза свойств. '
+                   'Порог 5 мол.% по всем выбранным свойствам проверяется отдельно.')
     if not allfound.empty:
         st.subheader('Отобранные составы')
         cols=['Run_Unique_ID','Glass_family']+list(PROPS)
@@ -258,10 +261,19 @@ if folder:
                             details.append('VITRIFY: '+formatted(score,3)+
                                            (' (прогноз стеклообразования ≥ 0,5)' if score>=.5
                                             else ' (прогноз стеклообразования < 0,5)'))
-                        analogue=evidence.get('Near_analogue_within_5_mol')
-                        if isinstance(analogue,(bool,np.bool_)):
-                            details.append('Экспериментальный аналог ≤ 5 мол.%: '+
-                                           ('найден' if analogue else 'не найден'))
+                        nearest=pd.to_numeric(
+                            evidence.get('Nearest_any_halfL1_mol'),errors='coerce')
+                        source=evidence.get('Nearest_any_source')
+                        if pd.notna(nearest):
+                            label='Ближайший экспериментальный состав: '+formatted(nearest,2)+' мол.%'
+                            if pd.notna(source):
+                                label+=' (база: '+str(source)+')'
+                            details.append(label)
+                        all_dist=pd.to_numeric(
+                            evidence.get('Nearest_max_halfL1_mol'),errors='coerce')
+                        if pd.notna(all_dist):
+                            details.append('Максимальное из минимальных расстояний по '
+                                           'выбранным свойствам: '+formatted(all_dist,2)+' мол.%')
                 st.caption(' · '.join(details))
         for _,r in picked.head(10).iterrows():
             show_recipe(r)
@@ -280,7 +292,9 @@ if folder:
             if science is not None:
                 full_table=full_table.merge(science.drop(columns=['Candidate_ID']),on='Run_Unique_ID',
                                             how='left',validate='one_to_one')
-                visible_cols+=['Near_analogue_within_5_mol','VITRIFY_score','Tsoft_ge_Tg']
+                visible_cols+=['Near_analogue_within_5_mol',
+                               'Nearest_any_halfL1_mol','Nearest_any_source',
+                               'Nearest_max_halfL1_mol','VITRIFY_score','Tsoft_ge_Tg']
             st.dataframe(full_table[visible_cols],hide_index=True,use_container_width=True)
         download=allfound.copy()
         if science is not None:
