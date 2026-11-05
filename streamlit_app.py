@@ -45,6 +45,31 @@ def make_gn(oxides):
     predictor.calls=0
     return predictor
 
+
+class _ProgressGlassNet:
+    """Only reports genuine completed GlassNet evaluations; GA is unchanged."""
+    def __init__(self, inner, meter, total):
+        self.inner = inner
+        self.meter = meter
+        self.total = max(int(total), 1)
+
+    @property
+    def rows(self):
+        return self.inner.rows
+
+    @property
+    def calls(self):
+        return self.inner.calls
+
+    def __call__(self, frame):
+        output = self.inner(frame)
+        checked = int(self.inner.rows)
+        pct = min(90, 12 + round(78 * min(checked, self.total) / self.total))
+        self.meter.progress(
+            pct, text=f'Проверено {checked} из {self.total} составов (GlassDesign ML + GlassNet)'
+        )
+        return output
+
 st.set_page_config(page_title='GlassDesign ML',page_icon='🧪',layout='wide',
                    initial_sidebar_state='expanded')
 LABELS={'Density_g_cm3':('Плотность, г/см³','3.2','5.3'),
@@ -94,31 +119,31 @@ except Exception as e:
 
 with st.sidebar:
     st.header('Подбор состава')
+    st.subheader('1. Химическая система')
+    mode_ru=st.radio('Как задать состав?',
+                     ('Пусть программа подберёт систему','Выбрать готовые семейства',
+                      'Собственный набор оксидов'))
+    mode={'Пусть программа подберёт систему':'auto',
+          'Выбрать готовые семейства':'families',
+          'Собственный набор оксидов':'manual'}[mode_ru]
+    selected_names=[];manual_bounds={};excluded=[]
+    if mode=='families':
+        selected_names=st.multiselect('Семейства',sorted(raw_catalog),
+                     default=[x for x in ['Боратные','Боросиликатные','Германатные']
+                              if x in raw_catalog])
+    elif mode=='manual':
+        chosen=st.multiselect('Оксиды',oxides,
+                 default=[x for x in ('SiO2','B2O3','ZnO') if x in oxides])
+        defaults={'SiO2':(40.,75.),'B2O3':(10.,45.),'ZnO':(0.,40.)}
+        for oxide in chosen:
+            a,b=st.columns(2)
+            lo,hi=defaults.get(oxide,(0.,100.))
+            lower=a.number_input(oxide+' от, мол.%',0.,100.,float(lo),step=1.,key='l'+oxide)
+            upper=b.number_input(oxide+' до, мол.%',0.,100.,float(hi),step=1.,key='u'+oxide)
+            manual_bounds[oxide]=(lower,upper)
+    else:
+        excluded=st.multiselect('Исключить нежелательные оксиды (необязательно)',oxides)
     with st.form('input',clear_on_submit=False):
-        st.subheader('1. Химическая система')
-        mode_ru=st.radio('Как задать состав?',
-                         ('Пусть программа подберёт систему','Выбрать готовые семейства',
-                          'Собственный набор оксидов'))
-        mode={'Пусть программа подберёт систему':'auto',
-              'Выбрать готовые семейства':'families',
-              'Собственный набор оксидов':'manual'}[mode_ru]
-        selected_names=[];manual_bounds={};excluded=[]
-        if mode=='families':
-            selected_names=st.multiselect('Семейства',sorted(raw_catalog),
-                         default=[x for x in ['Боратные','Боросиликатные','Германатные']
-                                  if x in raw_catalog])
-        elif mode=='manual':
-            chosen=st.multiselect('Оксиды',oxides,
-                     default=[x for x in ('SiO2','B2O3','ZnO') if x in oxides])
-            defaults={'SiO2':(40.,75.),'B2O3':(10.,45.),'ZnO':(0.,40.)}
-            for oxide in chosen:
-                a,b=st.columns(2)
-                lo,hi=defaults.get(oxide,(0.,100.))
-                lower=a.number_input(oxide+' от, мол.%',0.,100.,float(lo),step=1.,key='l'+oxide)
-                upper=b.number_input(oxide+' до, мол.%',0.,100.,float(hi),step=1.,key='u'+oxide)
-                manual_bounds[oxide]=(lower,upper)
-        else:
-            excluded=st.multiselect('Исключить нежелательные оксиды (необязательно)',oxides)
         st.subheader('2. Требуемые свойства')
         chosen_props=st.multiselect('Свойства',list(PROPS),default=list(PROPS),
                                     format_func=lambda key: LABELS[key][0])
@@ -137,14 +162,31 @@ with st.sidebar:
 if submitted:
     try:
         criteria={p:(parse(v[0]),parse(v[1])) for p,v in raw_bounds.items()}
-        with st.spinner('Подбираем составы и проверяем прогнозы двух моделей…'):
-            # Isolated temporary folder per search; no shared 'latest search' or personal Drive.
-            session_dir=Path(tempfile.mkdtemp(prefix='glassdesign_public_'))
-            with _search_lock():
-                result=run(criteria,root=ROOT,mode=mode,selected_names=selected_names,
-                           manual_bounds=manual_bounds,excluded_oxides=excluded,seed=71,
-                           out_dir=session_dir/'result',
-                           gd_factory=make_gd,gn_factory=make_gn)
+        meter=st.progress(0, text='Проверяем параметры поиска…')
+        # Previously tested step 381 progress protocol; inputs resolve *before* model initialization.
+        from glass380_engine import load_backends, select_families
+        backend=load_backends(Path(__file__).resolve().parent)
+        feat,all_oxides,catalog=load_catalog(ROOT)
+        valid,_=backend['glass_benchmark_v21'].wide_family_filter(catalog,all_oxides,max_components=12)
+        available=select_families(valid,mode,selected_names,manual_bounds,excluded,all_oxides)
+        total=8*len(available)+120
+        def tracked_gd(root,features,oxides):
+            meter.progress(2,text='Открываем четыре обученные модели GlassDesign ML…')
+            predictor=make_gd(root,features,oxides)
+            meter.progress(6,text='Модели GlassDesign ML загружены')
+            return predictor
+        def tracked_gn(oxides):
+            meter.progress(7,text='Подготавливаем GlassNet (первый запуск может быть медленнее)…')
+            predictor=make_gn(oxides)
+            meter.progress(12,text=f'Обе модели готовы. Проверено 0 из {total} составов')
+            return _ProgressGlassNet(predictor,meter,total)
+        session_dir=Path(tempfile.mkdtemp(prefix='glassdesign_public_'))
+        with _search_lock():
+            result=run(criteria,root=ROOT,mode=mode,selected_names=selected_names,
+                       manual_bounds=manual_bounds,excluded_oxides=excluded,seed=71,
+                       out_dir=session_dir/'result',
+                       gd_factory=tracked_gd,gn_factory=tracked_gn)
+        meter.progress(100,text='Готово! Прогнозы сохранены, результаты доступны ниже.')
         st.session_state['glass380_folder']=str(result['folder'])
         st.session_state.pop('glass380_science',None)
         st.success('Подбор завершён. Результаты можно скачать в CSV.')
