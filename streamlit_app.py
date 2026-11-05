@@ -143,10 +143,10 @@ with st.sidebar:
             manual_bounds[oxide]=(lower,upper)
     else:
         excluded=st.multiselect('Исключить нежелательные оксиды (необязательно)',oxides)
+    st.subheader('2. Требуемые свойства')
+    chosen_props=st.multiselect('Свойства',list(PROPS),default=list(PROPS),
+                                format_func=lambda key: LABELS[key][0])
     with st.form('input',clear_on_submit=False):
-        st.subheader('2. Требуемые свойства')
-        chosen_props=st.multiselect('Свойства',list(PROPS),default=list(PROPS),
-                                    format_func=lambda key: LABELS[key][0])
         raw_bounds={}
         for key in chosen_props:
             label,default_lo,default_hi=LABELS[key]
