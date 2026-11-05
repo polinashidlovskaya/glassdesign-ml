@@ -224,7 +224,7 @@ if folder:
                'запускаются отдельно. Эти оценки не подтверждают свойства стекла экспериментально.')
     if st.button('Проверить стеклообразование (VITRIFY) и найти экспериментальные аналоги'):
         with st.spinner('Проверяем составы с помощью VITRIFY и ищем аналоги…'):
-            science,issues=check_all(result,ROOT,oxides,candidates=science_targets)
+            science,issues=check_all(result,ROOT,oxides,force=True,candidates=science_targets)
             st.session_state['glass380_science']=science
             st.session_state['glass380_science_issues']=issues
     if science is not None:
