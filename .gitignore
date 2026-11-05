@@ -1,0 +1,10 @@
+__pycache__/
+.pytest_cache/
+*.pyc
+*.joblib
+*.pkl
+*.csv
+*.zip
+.env
+.streamlit/secrets.toml
+runtime/GlassDesignML/models/*.joblib
