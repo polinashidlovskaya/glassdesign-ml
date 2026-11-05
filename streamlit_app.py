@@ -189,6 +189,7 @@ if submitted:
         meter.progress(100,text='Готово! Прогнозы сохранены, результаты доступны ниже.')
         st.session_state['glass380_folder']=str(result['folder'])
         st.session_state.pop('glass380_science',None)
+        st.session_state.pop('glass380_science_issues',None)
         st.success('Подбор завершён. Результаты можно скачать в CSV.')
     except Exception as exc:
         st.error('Не удалось выполнить поиск: '+str(exc))
@@ -218,14 +219,20 @@ if folder:
     st.caption('Заданные требования: '+text+'. Во всех прогнозах проверяется Tsoft ≥ Tg.')
     science_targets=allfound if not allfound.empty else tables['nearest_30'].head(7)
     science=st.session_state.get('glass380_science')
-    issues=[]
-    if st.button('Дополнительная проверка: VITRIFY и экспериментальные аналоги'):
-        with st.spinner('Выполняется дополнительная проверка…'):
+    issues=st.session_state.get('glass380_science_issues',[])
+    st.caption('Для быстрого подбора составов VITRIFY и поиск экспериментальных аналогов '
+               'запускаются отдельно. Эти оценки не подтверждают свойства стекла экспериментально.')
+    if st.button('Проверить стеклообразование (VITRIFY) и найти экспериментальные аналоги'):
+        with st.spinner('Проверяем составы с помощью VITRIFY и ищем аналоги…'):
             science,issues=check_all(result,ROOT,oxides,candidates=science_targets)
             st.session_state['glass380_science']=science
-        if issues: st.warning('Часть научных проверок недоступна; результаты отмечены как «Не проверено».')
-    if science is None:
-        st.caption('Стеклообразование и экспериментальные аналоги пока не проверены.')
+            st.session_state['glass380_science_issues']=issues
+    if science is not None:
+        checked_vitrify=int(pd.to_numeric(science['VITRIFY_score'],errors='coerce').notna().sum())
+        st.caption(f'VITRIFY: расчёт выполнен для {checked_vitrify} из {len(science)} составов.')
+        if issues:
+            with st.expander('Ограничения дополнительной проверки'):
+                for issue in issues: st.write(str(issue))
     if not allfound.empty:
         st.subheader('Отобранные составы')
         cols=['Run_Unique_ID','Glass_family']+list(PROPS)
@@ -241,18 +248,21 @@ if folder:
                 cb.metric('n',formatted(r.RefractiveIndex,4))
                 cc.metric('Tg, °C',formatted(r.Tg_C,1))
                 cd.metric('Tsoft, °C',formatted(r.Tsoft_C,1))
+                details=['Tsoft ≥ Tg: '+('да' if r.Tsoft_C>=r.Tg_C else 'нет')]
                 if science is not None:
-                    s=science.loc[science.Run_Unique_ID==r.Run_Unique_ID]
-                    if not s.empty:
-                        s=s.iloc[0];v=pd.to_numeric(s.get('VITRIFY_score'),errors='coerce')
-                        vt=('Не проверено' if pd.isna(v) else ('Модель поддерживает стеклообразование' if v>=.5
-                                                              else 'Модель не поддерживает стеклообразование'))
-                        st.caption('Аналоги: '+stat(s.get('Near_analogue_within_5_mol'))+
-                                   ' · VITRIFY: '+vt+' · Tsoft ≥ Tg: '+
-                                   ('да' if r.Tsoft_C>=r.Tg_C else 'нет'))
-                    else:st.caption('Аналоги и VITRIFY: не проверено')
-                else:st.caption('Tsoft ≥ Tg: '+('да' if r.Tsoft_C>=r.Tg_C else 'нет')+
-                                ' · Аналоги и VITRIFY: не проверено')
+                    found=science.loc[science.Run_Unique_ID==r.Run_Unique_ID]
+                    if not found.empty:
+                        evidence=found.iloc[0]
+                        score=pd.to_numeric(evidence.get('VITRIFY_score'),errors='coerce')
+                        if pd.notna(score):
+                            details.append('VITRIFY: '+formatted(score,3)+
+                                           (' (прогноз стеклообразования ≥ 0,5)' if score>=.5
+                                            else ' (прогноз стеклообразования < 0,5)'))
+                        analogue=evidence.get('Near_analogue_within_5_mol')
+                        if isinstance(analogue,(bool,np.bool_)):
+                            details.append('Экспериментальный аналог ≤ 5 мол.%: '+
+                                           ('найден' if analogue else 'не найден'))
+                st.caption(' · '.join(details))
         for _,r in picked.head(10).iterrows():
             show_recipe(r)
         if len(picked)>10:
