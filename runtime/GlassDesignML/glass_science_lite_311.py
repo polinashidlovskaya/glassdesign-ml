@@ -23,7 +23,8 @@ SOURCES = {
 }
 
 
-def near_analogues(candidates, criteria, root, max_half_l1=5.0, chunk_size=7000):
+def near_analogues(candidates, criteria, root, max_half_l1=5.0, chunk_size=7000,
+                   return_distances=False):
     """For EACH criterion find nearest measured recipe in relevant dataset.
 
     Output: None if reference wasn't checked, True if <= 5mol% for ALL
@@ -92,6 +93,10 @@ def near_analogues(candidates, criteria, root, max_half_l1=5.0, chunk_size=7000)
             distance=float(max(values))
             nearest.append(distance)
             statuses.append(distance<=max_half_l1)
+    if return_distances:
+        # Source-specific minimum half-L1 distances (mol.%); keep historical
+        # maximum-of-minima result above for the all-properties 5 mol.% rule.
+        return statuses,nearest,failures,distances
     return statuses,nearest,failures
 
 
