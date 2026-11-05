@@ -1,0 +1,22 @@
+{
+  "Плотность": {
+    "filename": "density_extra_trees_final.joblib",
+    "output_column": "Density_g_cm3",
+    "feature_count": 84
+  },
+  "Показатель преломления": {
+    "filename": "refractive_index_extra_trees_final_v2.joblib",
+    "output_column": "RefractiveIndex",
+    "feature_count": 73
+  },
+  "Температура стеклования": {
+    "filename": "rf_tg_final.joblib",
+    "output_column": "Tg_C",
+    "feature_count": 82
+  },
+  "Температура размягчения": {
+    "filename": "extra_trees_softening_final.joblib",
+    "output_column": "Tsoft_C",
+    "feature_count": 64
+  }
+}
