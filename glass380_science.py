@@ -51,6 +51,8 @@ def check_all(result,root,oxide_columns=None,force=False,candidates=None):
                            'Candidate_ID':source.Candidate_ID,
                            'Near_analogue_within_5_mol':pd.Series([None]*len(source),dtype='object'),
                            'Nearest_max_halfL1_mol':np.full(len(source),np.nan),
+                           'Nearest_any_halfL1_mol':np.full(len(source),np.nan),
+                           'Nearest_any_source':pd.Series([None]*len(source),dtype='object'),
                            'VITRIFY_score':np.full(len(source),np.nan),
                            'Tsoft_ge_Tg':(candidates.Tsoft_C.to_numpy(float)>=
                                           candidates.Tg_C.to_numpy(float))})
@@ -65,11 +67,32 @@ def check_all(result,root,oxide_columns=None,force=False,candidates=None):
         scientific=None
     if scientific is not None and len(candidates):
         try:
-            flags,distances,issue=scientific.near_analogues(candidates,criteria,root)
+            flags,distances,issue,by_property=scientific.near_analogues(
+                candidates,criteria,root,return_distances=True)
             if len(flags)!=len(candidates) or len(distances)!=len(candidates):
                 raise ValueError('Ответ для аналогов имеет неверную длину')
             statuses['Near_analogue_within_5_mol']=flags
             statuses['Nearest_max_halfL1_mol']=distances
+            # The nearest match across any measured-property dataset is distinct
+            # from the 5 mol.% criterion, which must hold for every selected one.
+            labels={'Density_g_cm3':'Плотность','RefractiveIndex':'Преломление',
+                    'Tg_C':'Tg','Tsoft_C':'Tsoft'}
+            nearest_any=np.full(len(candidates),np.inf,dtype=float)
+            nearest_source=[None]*len(candidates)
+            for prop,values in by_property.items():
+                if values is None:
+                    continue
+                arr=np.asarray(values,dtype=float)
+                if arr.shape!=(len(candidates),):
+                    raise ValueError('Некорректный массив расстояний '+prop)
+                statuses['Nearest_'+prop+'_halfL1_mol']=arr
+                improved=np.isfinite(arr)&(arr<nearest_any)
+                for i in np.flatnonzero(improved):
+                    nearest_source[i]=labels.get(prop,prop)
+                nearest_any=np.minimum(nearest_any,arr)
+            statuses['Nearest_any_halfL1_mol']=np.where(
+                np.isfinite(nearest_any),nearest_any,np.nan)
+            statuses['Nearest_any_source']=nearest_source
             if issue:issues.append('Экспериментальные аналоги: '+str(issue))
         except Exception as e:
             issues.append('Аналоги не проверены: '+repr(e))
