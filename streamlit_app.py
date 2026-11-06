@@ -236,45 +236,45 @@ if folder:
         st.caption('Расстояние до экспериментального состава — половина суммы абсолютных '
                    'различий концентраций оксидов (мол.%). Это не ошибка прогноза свойств. '
                    'Порог 5 мол.% по всем выбранным свойствам проверяется отдельно.')
+    def show_recipe(r):
+        with st.container(border=True):
+            st.markdown('**№ '+str(r.Run_Unique_ID)+' · '+str(r.Glass_family)+'**')
+            st.write('**Состав, мол.%:** '+composition(r,oxides))
+            ca,cb,cc,cd=st.columns(4)
+            ca.metric('ρ, г/см³',formatted(r.Density_g_cm3,3))
+            cb.metric('n',formatted(r.RefractiveIndex,4))
+            cc.metric('Tg, °C',formatted(r.Tg_C,1))
+            cd.metric('Tsoft, °C',formatted(r.Tsoft_C,1))
+            details=['Tsoft ≥ Tg: '+('да' if r.Tsoft_C>=r.Tg_C else 'нет')]
+            if science is not None:
+                found=science.loc[science.Run_Unique_ID==r.Run_Unique_ID]
+                if not found.empty:
+                    evidence=found.iloc[0]
+                    score=pd.to_numeric(evidence.get('VITRIFY_score'),errors='coerce')
+                    if pd.notna(score):
+                        details.append('VITRIFY: '+formatted(score,3)+
+                                       (' (прогноз стеклообразования ≥ 0,5)' if score>=.5
+                                        else ' (прогноз стеклообразования < 0,5)'))
+                    nearest=pd.to_numeric(
+                        evidence.get('Nearest_any_halfL1_mol'),errors='coerce')
+                    source=evidence.get('Nearest_any_source')
+                    if pd.notna(nearest):
+                        label='Ближайший экспериментальный состав: '+formatted(nearest,2)+' мол.%'
+                        if pd.notna(source):
+                            label+=' (база: '+str(source)+')'
+                        details.append(label)
+                    all_dist=pd.to_numeric(
+                        evidence.get('Nearest_max_halfL1_mol'),errors='coerce')
+                    if pd.notna(all_dist):
+                        details.append('Максимальное из минимальных расстояний по '
+                                       'выбранным свойствам: '+formatted(all_dist,2)+' мол.%')
+            st.caption(' · '.join(details))
     if not allfound.empty:
         st.subheader('Отобранные составы')
         cols=['Run_Unique_ID','Glass_family']+list(PROPS)
         st.dataframe(picked[cols],hide_index=True,use_container_width=True)
         st.caption('Отбор проводится по близости к серединам интервалов и химическому разнообразию. '
                    'Это не рейтинг вероятности успешного синтеза.')
-        def show_recipe(r):
-            with st.container(border=True):
-                st.markdown('**№ '+str(r.Run_Unique_ID)+' · '+str(r.Glass_family)+'**')
-                st.write('**Состав, мол.%:** '+composition(r,oxides))
-                ca,cb,cc,cd=st.columns(4)
-                ca.metric('ρ, г/см³',formatted(r.Density_g_cm3,3))
-                cb.metric('n',formatted(r.RefractiveIndex,4))
-                cc.metric('Tg, °C',formatted(r.Tg_C,1))
-                cd.metric('Tsoft, °C',formatted(r.Tsoft_C,1))
-                details=['Tsoft ≥ Tg: '+('да' if r.Tsoft_C>=r.Tg_C else 'нет')]
-                if science is not None:
-                    found=science.loc[science.Run_Unique_ID==r.Run_Unique_ID]
-                    if not found.empty:
-                        evidence=found.iloc[0]
-                        score=pd.to_numeric(evidence.get('VITRIFY_score'),errors='coerce')
-                        if pd.notna(score):
-                            details.append('VITRIFY: '+formatted(score,3)+
-                                           (' (прогноз стеклообразования ≥ 0,5)' if score>=.5
-                                            else ' (прогноз стеклообразования < 0,5)'))
-                        nearest=pd.to_numeric(
-                            evidence.get('Nearest_any_halfL1_mol'),errors='coerce')
-                        source=evidence.get('Nearest_any_source')
-                        if pd.notna(nearest):
-                            label='Ближайший экспериментальный состав: '+formatted(nearest,2)+' мол.%'
-                            if pd.notna(source):
-                                label+=' (база: '+str(source)+')'
-                            details.append(label)
-                        all_dist=pd.to_numeric(
-                            evidence.get('Nearest_max_halfL1_mol'),errors='coerce')
-                        if pd.notna(all_dist):
-                            details.append('Максимальное из минимальных расстояний по '
-                                           'выбранным свойствам: '+formatted(all_dist,2)+' мол.%')
-                st.caption(' · '.join(details))
         for _,r in picked.head(10).iterrows():
             show_recipe(r)
         if len(picked)>10:
@@ -306,7 +306,7 @@ if folder:
     else:
         st.warning('Составов, удовлетворяющих всем условиям по обоим прогнозам, не найдено. '
                    'Ниже ближайшие кандидаты — они не соответствуют всем требованиям.')
-        near=tables['nearest_30'].head(10).copy()
+        near=tables['nearest_30'].head(7).copy()
         cols=['Run_Unique_ID','Glass_family','Max_normalized_violation']+list(PROPS)
         if science is not None and not science.empty:
             near=near.merge(science.drop(columns=['Candidate_ID']),on='Run_Unique_ID',how='left',validate='one_to_one')
