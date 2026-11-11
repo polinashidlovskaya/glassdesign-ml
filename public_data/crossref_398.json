@@ -1,0 +1,92 @@
+{
+  "41433|41040|spectroscopic and structural properties of teo2 zno na2o er2o3 au glasses": {
+    "status": "Crossref требует ручной проверки",
+    "candidates": [
+      {
+        "doi": "10.1007/s10853-006-0095-7",
+        "title": "Spectroscopic studies of TeO2–ZnO–Er2O3 glass system",
+        "similarity": 0.72,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2007"
+      },
+      {
+        "doi": "10.1016/j.jnoncrysol.2018.02.005",
+        "title": "Spectroscopic investigations of Pr3+ ions in Na2O-La2O3-ZnO-TeO2 glasses",
+        "similarity": 0.6389,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2018"
+      },
+      {
+        "doi": "10.1016/j.jallcom.2025.185662",
+        "title": "Structural, thermal and spectroscopic properties of Tm3+ doped TeO2-Bi2O3-ZnO glasses",
+        "similarity": 0.5769,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2026"
+      },
+      {
+        "doi": "10.2139/ssrn.4371080",
+        "title": "Structural, Thermophysical and Optical Properties of B2o3-Teo2-Zno-Na2o Glasses Doped with Eu2o3",
+        "similarity": 0.5476,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2023"
+      },
+      {
+        "doi": "10.1016/s0022-3093(02)01022-0",
+        "title": "Er3+ environment in TeO2–ZnO–Na2O glasses",
+        "similarity": 0.4779,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2002"
+      }
+    ]
+  },
+  "20768|17395|thermal stability electronic polarisability and optical basicity of ternary tellurite glasses": {
+    "status": "Crossref требует ручной проверки",
+    "candidates": [
+      {
+        "doi": "10.1051/jphyscol:19814219",
+        "title": "THE ELECTRONIC AND OPTICAL PROPERTIES OF VANADIUM TELLURITE GLASSES",
+        "similarity": 0.65,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "1981"
+      },
+      {
+        "doi": "10.1007/s10904-020-01640-4",
+        "title": "Spectroscopic Properties, Electronic Polarizability, and Optical Basicity of Titanium–Cadmium Tellurite Glasses Doped with Different Amounts of Lanthanum",
+        "similarity": 0.6148,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2020"
+      },
+      {
+        "doi": "10.11648/j.ajop.20170502.11",
+        "title": "Optical and Thermal Properties of Some Tellurite Glasses",
+        "similarity": 0.5101,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2017"
+      },
+      {
+        "doi": "10.1016/j.ceramint.2026.10.322",
+        "title": "Optical properties and thermal stability of neodymium doped tellurite glasses",
+        "similarity": 0.4824,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2026"
+      },
+      {
+        "doi": "10.1364/ome.2.000140",
+        "title": "Ternary tellurite glasses for the fabrication of nonlinear optical fibres",
+        "similarity": 0.3012,
+        "author_ok": false,
+        "year_ok": false,
+        "year": "2012"
+      }
+    ]
+  }
+}
